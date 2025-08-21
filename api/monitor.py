@@ -10,10 +10,8 @@ from src.validator import ingest_data, detect_change, validate_data
 from src.db import store_results
 from src.alert import send_alert
 
-# Load environment variables from a .env file for local development
 load_dotenv()
 
-# --- Configuration ---
 TARGET_API_URL = os.environ["TARGET_API_URL"]
 MONGODB_URI = os.environ["MONGODB_URI"]
 MONGODB_DB = os.environ["MONGODB_DB"]
@@ -25,20 +23,18 @@ SENDGRID_API_KEY = os.environ["SENDGRID_API_KEY"]
 
 
 def handler(request, response):
-    """
-    Main handler function for the serverless endpoint.
-    """
     try:
         query = request.url.split("?")[1] if "?" in request.url else ""
         force = "force=true" in query.lower()
 
-        # --- Data Ingestion with Retries ---
         session = requests.Session()
         retry = Retry(
             total=3,
-            backoff_factor=1,
             # --- FIXED ---
-            # Added 429 to the status_forcelist to handle rate limiting
+            # Increased backoff_factor from 1 to 5 seconds.
+            # This creates a longer delay (5s, 10s, 20s) between retries
+            # to avoid overwhelming the API's rate limit.
+            backoff_factor=5,
             status_forcelist=[429, 500, 502, 503, 504]
         )
         adapter = HTTPAdapter(max_retries=retry)
@@ -46,9 +42,9 @@ def handler(request, response):
         session.mount("https://", adapter)
 
         print(f"Fetching data from: {TARGET_API_URL}")
-        api_response = session.get(TARGET_API_URL, timeout=15) # Increased timeout slightly
+        # Increased timeout to accommodate longer retry delays
+        api_response = session.get(TARGET_API_URL, timeout=30)
 
-        # --- Initial API Response Check ---
         if api_response.status_code != 200:
             print(f"API request failed with status code: {api_response.status_code}")
             print(f"Response content: {api_response.text}")
@@ -57,7 +53,6 @@ def handler(request, response):
         raw_data = api_response.content
         content_hash = hashlib.sha256(raw_data).hexdigest()
 
-        # --- Change Detection ---
         if not force and not detect_change(content_hash):
             result = {"message": "No change detected, skipping validation."}
             response.status_code = 200
@@ -65,11 +60,9 @@ def handler(request, response):
             response.send(json.dumps(result))
             return
 
-        # --- Data Validation ---
         df = ingest_data(raw_data)
         validation_results = validate_data(df)
 
-        # --- Summarize Validation Results ---
         success = validation_results["success"]
         n_expectations = len(validation_results["results"])
         n_success = sum(1 for r in validation_results["results"] if r["success"])
@@ -86,7 +79,6 @@ def handler(request, response):
             "content_hash": content_hash
         }
 
-        # --- Storage and Alerting ---
         store_results(summary, validation_results)
 
         if not success or percent_valid < 95:
@@ -97,7 +89,6 @@ def handler(request, response):
             ]
             send_alert(summary, failed_exps)
 
-        # --- Final Response ---
         result = {"summary": summary}
         response.status_code = 200
 
