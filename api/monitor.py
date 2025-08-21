@@ -101,7 +101,7 @@ def handler(request, response):
         error_msg = {"error": str(e)}
         print(f"An error occurred: {str(e)}")
         send_alert(
-            {"timestamp": datetime.utcnow().isoformat(), "error": str(e)}, []
+            {"timestamp": datetime.utcnow(), "error": str(e)}, []
         )
         response.status_code = 500
         result = error_msg
