@@ -14,8 +14,6 @@ from src.alert import send_alert
 load_dotenv()
 
 # --- Configuration ---
-# All sensitive and configurable values are loaded from environment variables
-# for security and flexibility.
 TARGET_API_URL = os.environ["TARGET_API_URL"]
 MONGODB_URI = os.environ["MONGODB_URI"]
 MONGODB_DB = os.environ["MONGODB_DB"]
@@ -29,38 +27,29 @@ SENDGRID_API_KEY = os.environ["SENDGRID_API_KEY"]
 def handler(request, response):
     """
     Main handler function for the serverless endpoint.
-
-    This function performs the following steps:
-    1. Fetches data from the target API with a retry mechanism.
-    2. Calculates a hash of the data to detect changes.
-    3. Validates the data against a suite of expectations.
-    4. Stores the validation results in a MongoDB database.
-    5. Sends an email alert if the validation fails.
     """
     try:
-        # Determine if a validation should be forced, bypassing change detection
         query = request.url.split("?")[1] if "?" in request.url else ""
         force = "force=true" in query.lower()
 
         # --- Data Ingestion with Retries ---
-        # Set up a session with a retry strategy for network resilience.
-        # This helps handle temporary server errors from the API.
         session = requests.Session()
         retry = Retry(
-            total=3,                # Total number of retries
-            backoff_factor=1,       # Delay between retries (e.g., 1s, 2s, 4s)
-            status_forcelist=[500, 502, 503, 504] # HTTP codes that trigger a retry
+            total=3,
+            backoff_factor=1,
+            # --- FIXED ---
+            # Added 429 to the status_forcelist to handle rate limiting
+            status_forcelist=[429, 500, 502, 503, 504]
         )
         adapter = HTTPAdapter(max_retries=retry)
         session.mount("http://", adapter)
         session.mount("https://", adapter)
 
         print(f"Fetching data from: {TARGET_API_URL}")
-        api_response = session.get(TARGET_API_URL, timeout=10) # 10-second timeout
+        api_response = session.get(TARGET_API_URL, timeout=15) # Increased timeout slightly
 
         # --- Initial API Response Check ---
         if api_response.status_code != 200:
-            # Log the error for easier debugging before raising an exception
             print(f"API request failed with status code: {api_response.status_code}")
             print(f"Response content: {api_response.text}")
             raise Exception(f"API request failed: {api_response.status_code}")
@@ -69,8 +58,6 @@ def handler(request, response):
         content_hash = hashlib.sha256(raw_data).hexdigest()
 
         # --- Change Detection ---
-        # If not forced, check if the data has changed since the last run
-        # to avoid redundant validations.
         if not force and not detect_change(content_hash):
             result = {"message": "No change detected, skipping validation."}
             response.status_code = 200
@@ -115,15 +102,13 @@ def handler(request, response):
         response.status_code = 200
 
     except Exception as e:
-        # Catch any exception, log it, send an alert, and return a 500 error
         error_msg = {"error": str(e)}
-        print(f"An error occurred: {str(e)}") # Log the error to the console
+        print(f"An error occurred: {str(e)}")
         send_alert(
             {"timestamp": datetime.utcnow().isoformat(), "error": str(e)}, []
         )
         response.status_code = 500
         result = error_msg
 
-    # Set the response headers and send the JSON result
     response.headers["Content-Type"] = "application/json"
     response.send(json.dumps(result))
