@@ -54,8 +54,6 @@ def handler(request, response):
             print(f"API returned an error: {error_message}")
             raise Exception(f"API Error: {error_message}")
 
-        # --- FIXED ---
-        # Corrected the typo from sha2d56 to sha256.
         content_hash = hashlib.sha256(raw_data).hexdigest()
 
         if not force and not detect_change(content_hash):
@@ -75,7 +73,8 @@ def handler(request, response):
         percent_valid = (n_success / n_expectations * 100) if n_expectations > 0 else 100
 
         summary = {
-            "timestamp": datetime.utcnow().isoformat(),
+            # --- THIS IS THE FIX ---
+            "timestamp": datetime.utcnow(),
             "success": success,
             "n_expectations": n_expectations,
             "n_success": n_success,
@@ -107,4 +106,9 @@ def handler(request, response):
         result = error_msg
 
     response.headers["Content-Type"] = "application/json"
-    response.send(json.dumps(result))
+    # Note: MongoDB requires a BSON-compatible JSON encoder. 
+    # The default json.dumps will convert the datetime object back to a string.
+    # A custom encoder is needed if this part of the code is run outside of an environment
+    # that handles this automatically (like some serverless platforms).
+    # For now, we assume the environment handles it, but this is a key point.
+    response.send(json.dumps(result, default=str))
