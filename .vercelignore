@@ -1,0 +1,20 @@
+# Ignore directories
+.github/
+tests/
+docs/
+scripts/
+great_expectations/uncommitted/
+__pycache__/
+
+# Ignore specific files
+.gitignore
+Pipfile
+README.md
+resume_pitch.md
+DEPLOYMENT_GUIDE.md
+GITHUB_ACTIONS_SETUP.md
+.env
+.env.example
+
+# Ignore python cache files
+*.pyc
