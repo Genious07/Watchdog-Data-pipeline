@@ -13,7 +13,6 @@ from src.alert import send_alert
 load_dotenv()
 
 # --- Configuration ---
-# Switched to CryptoCompare - no API key needed for this endpoint.
 TARGET_API_URL = os.environ["TARGET_API_URL"]
 MONGODB_URI = os.environ["MONGODB_URI"]
 MONGODB_DB = os.environ["MONGODB_DB"]
@@ -40,7 +39,6 @@ def handler(request, response):
         session.mount("https://", adapter)
 
         print(f"Fetching data from: {TARGET_API_URL}")
-        # The URL is now used directly, with no key needed.
         api_response = session.get(TARGET_API_URL, timeout=30)
 
         if api_response.status_code != 200:
@@ -50,14 +48,15 @@ def handler(request, response):
 
         raw_data = api_response.content
         
-        # Check for CryptoCompare's specific error format.
         data = json.loads(raw_data)
         if data.get("Response") == "Error":
             error_message = data.get("Message", "Unknown API error")
             print(f"API returned an error: {error_message}")
             raise Exception(f"API Error: {error_message}")
 
-        content_hash = hashlib.sha2d56(raw_data).hexdigest()
+        # --- FIXED ---
+        # Corrected the typo from sha2d56 to sha256.
+        content_hash = hashlib.sha256(raw_data).hexdigest()
 
         if not force and not detect_change(content_hash):
             result = {"message": "No change detected, skipping validation."}
