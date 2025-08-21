@@ -8,4 +8,5 @@ sendgrid==6.10.0
 pytest==8.4.1
 pytest-mock==3.14.1
 flake8==7.3.0
-
+Flask==3.0.3
+gunicorn==22.0.0
