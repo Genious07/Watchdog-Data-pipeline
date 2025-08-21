@@ -1,171 +1,166 @@
-# 🚀 Data Quality Watchdog - Financial Market Monitor
+# Data Quality Watchdog for Financial Market Data
 
-A production-ready, serverless application that monitors data quality from financial APIs (Binance OHLCV for BTCUSDT). Features automated validation, real-time alerting, and a comprehensive Grafana dashboard perfect for showcasing data engineering capabilities.
+This project implements a serverless data pipeline that actively monitors the quality of financial market data from an API. It provides a robust framework for automated data ingestion, validation, and real-time monitoring, complete with a live dashboard and alerting system.
 
-## ✨ Key Features
+The pipeline fetches OHLCV (Open, High, Low, Close, Volume) data for BTC/USDT, validates it against a predefined set of data quality rules, and logs the results. This ensures data integrity and reliability for any downstream applications or analysis.
 
-- **🔄 Automated Data Ingestion**: Fetches OHLCV data from Binance API
-- **⚡ Flexible Scheduling**: 
-  - Daily via Vercel Cron (Hobby plan compatible)
-  - Hourly via GitHub Actions (free alternative)
-  - Customizable frequency for demos
-- **🔍 Smart Change Detection**: Content hashing to avoid redundant validations
-- **✅ Comprehensive Validation**: Great Expectations framework with 8+ data quality checks
-- **📊 Professional Dashboard**: Showcase-ready Grafana dashboard with real-time metrics
-- **🚨 Intelligent Alerting**: SendGrid email notifications for failures
-- **☁️ Serverless Architecture**: Zero server management with Vercel
+### Live Dashboard
 
-## 🎯 Perfect for Showcasing
+A live snapshot of the monitoring dashboard can be viewed here:
 
-This project demonstrates:
-- **Data Engineering**: ETL pipeline with validation and monitoring
-- **DevOps**: CI/CD with GitHub Actions, serverless deployment
-- **Data Visualization**: Professional Grafana dashboards
-- **System Design**: Scalable, event-driven architecture
-- **Best Practices**: Testing, linting, documentation, error handling
+**[View Live Grafana Dashboard](https://satwik07.grafana.net/dashboard/snapshot/4doPsh8wNqw4jQnjOJRYr1TzXLPmETUw)**
 
-## 📊 Grafana Dashboard Highlights
+-----
 
-The dashboard includes:
-- **Real-time KPIs**: Current status, quality score, validation breakdown
-- **Trend Analysis**: Quality metrics over time with threshold alerts
-- **Historical Data**: Detailed validation history and patterns
-- **System Health**: Uptime statistics and performance metrics
-- **Professional Styling**: Dark theme with color-coded indicators
+## Key Features
 
-![Dashboard Preview](docs/dashboard_preview.png)
+  * **Automated Data Ingestion**: Periodically fetches OHLCV data from the CryptoCompare API.
+  * **Efficient Change Detection**: Uses content hashing (`SHA-256`) to identify changes in the source data, preventing redundant validations and conserving resources.
+  * **Comprehensive Data Validation**: Leverages the Great Expectations framework to perform a suite of data quality checks, ensuring data is accurate, complete, and reliable.
+  * **Real-time Alerting**: Automatically sends email notifications via SendGrid when data quality issues or system errors are detected.
+  * **Data Persistence**: Stores validation results and summaries in a MongoDB database for historical analysis and trend monitoring.
+  * **Insightful Dashboarding**: Results are visualized in a Grafana dashboard, providing at-a-glance insights into data quality metrics, trends, and system health.
+  * **CI/CD and Scheduled Monitoring**: Includes GitHub Actions for continuous integration and for triggering the monitoring pipeline on a schedule.
 
-## 🚀 Quick Start
+-----
 
-### 1. Deploy to Vercel
+## Architecture
 
-```bash
-# Clone and deploy
-git clone https://github.com/yourusername/data-quality-watchdog.git
-cd data-quality-watchdog
-
-# Deploy to Vercel (auto-detects Python)
-vercel --prod
-```
-
-### 2. Configure Environment Variables
-
-
-
-### 3. Enable GitHub Actions Monitoring
-
-1. Add repository secret: `VERCEL_ENDPOINT` = `https://your-vercel-url.vercel.app`
-2. GitHub Actions will trigger hourly monitoring automatically
-
-### 4. Set Up Grafana Dashboard
-
-1. Sign up for [Grafana Cloud](https://grafana.com) (free tier)
-2. Add MongoDB data source with provided credentials
-3. Import `docs/grafana_dashboard.json`
-4. Generate demo data: `python scripts/generate_demo_data.py`
-
-## 🏗️ Architecture
+The system is designed as an event-driven, serverless pipeline. A cron job, managed by GitHub Actions, triggers the process on a recurring schedule. This initiates a request to the monitoring endpoint hosted on Render.
 
 ```
-┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
-│ GitHub Actions  │───▶│ Vercel API   │───▶│ Binance API     │
-│ (Hourly Cron)   │    │ Monitor      │    │ (OHLCV Data)    │
-└─────────────────┘    └──────────────┘    └─────────────────┘
-                              │
-                              ▼
-                    ┌──────────────────┐
-                    │ Great            │
-                    │ Expectations     │
-                    │ Validation       │
-                    │ (8 Checks)       │
-                    └──────────────────┘
-                              │
-                    ┌─────────┴─────────┐
-                    ▼                   ▼
-            ┌──────────────┐    ┌──────────────┐
-            │ MongoDB      │    │ SendGrid     │
-            │ Atlas        │    │ Alerts       │
-            │ (Free Tier)  │    │ (Email)      │
-            └──────────────┘    └──────────────┘
-                    │
-                    ▼
-            ┌──────────────┐
-            │ Grafana      │
-            │ Cloud        │
-            │ Dashboard    │
-            └──────────────┘
+┌─────────────────┐      ┌────────────────┐      ┌─────────────────┐
+│ GitHub Actions  │──────▶│ Render Service │──────▶│ CryptoCompare   │
+│ (Scheduled Cron)│      │ (API Endpoint) │      │ API (OHLCV Data)│
+└─────────────────┘      └────────────────┘      └─────────────────┘
+                                   │
+                                   ▼
+                         ┌──────────────────┐
+                         │ Great            │
+                         │ Expectations     │
+                         │ Validation       │
+                         └──────────────────┘
+                                   │
+                         ┌─────────┴─────────┐
+                         ▼                   ▼
+                 ┌──────────────┐    ┌──────────────┐
+                 │ MongoDB      │    │ SendGrid     │
+                 │ Atlas        │    │ Alerts       │
+                 │              │    │ (Email)      │
+                 └──────────────┘    └──────────────┘
+                         │
+                         ▼
+                 ┌──────────────┐
+                 │ Grafana      │
+                 │ Cloud        │
+                 │ Dashboard    │
+                 └──────────────┘
 ```
 
-## 🔧 Development
+-----
+
+## Technology Stack
+
+  * **Backend**: Python, Flask
+  * **Data Validation**: Great Expectations
+  * **Database**: MongoDB
+  * **Alerting**: SendGrid
+  * **Deployment**: Render
+  * **CI/CD & Automation**: GitHub Actions
+  * **Data Visualization**: Grafana
+
+-----
+
+## Getting Started
+
+### Prerequisites
+
+  * Python 3.11+
+  * MongoDB Atlas account
+  * SendGrid account
+  * Render account
+  * Grafana Cloud account
 
 ### Local Setup
 
+1.  **Clone the repository:**
+
+    ```bash
+    git clone https://github.com/your-username/watchdog-data-pipeline.git
+    cd watchdog-data-pipeline
+    ```
+
+2.  **Install dependencies:**
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3.  **Configure environment variables:**
+    Create a `.env` file in the root directory and populate it with your credentials. You can use `.env.example` as a template.
+
+    ```bash
+    cp .env.example .env
+    ```
+
+4.  **Run the application locally:**
+
+    ```bash
+    flask run
+    ```
+
+    The application will be available at `http://127.0.0.1:5000`.
+
+5.  **Trigger a validation check:**
+    Access `http://127.0.0.1:5000/api/monitor?force=true` in your browser or via `curl`.
+
+### Deployment on Render
+
+This application can be deployed as a Web Service on Render.
+
+1.  **Create a new Web Service on Render** and connect it to your forked repository.
+2.  **Set the Start Command**: `gunicorn app:app`
+3.  **Add Environment Variables**: In the Render dashboard, add the environment variables defined in your `.env` file.
+4.  **Deploy**. Render will automatically deploy your application.
+
+### Scheduled Monitoring with GitHub Actions
+
+The monitoring pipeline is triggered by a scheduled workflow in GitHub Actions.
+
+1.  In your GitHub repository, go to **Settings \> Secrets and variables \> Actions**.
+2.  Create a new repository secret named `RENDER_ENDPOINT`.
+3.  Set the value to your Render service URL (e.g., `https://your-app-name.onrender.com`).
+4.  The workflow in `.github/workflows/data-quality-monitor.yml` will now trigger your deployed service hourly.
+
+-----
+
+## Testing
+
+The project includes a suite of unit tests. To run them:
+
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy environment variables
-cp .env.example .env.local
-# Edit .env.local with your credentials
-
-# Run tests
-pytest
-
-# Run linting
-flake8 api src tests
-```
-
-### Testing
-
-```bash
-# Run all tests
 pytest -v
-
-# Run with coverage
-pytest --cov=src
-
-# Test specific component
-pytest tests/test_validator.py
 ```
 
-## 📈 Monitoring Options
+To run tests with coverage:
 
-| Option | Cost | Frequency | Setup | Best For |
-|--------|------|-----------|-------|----------|
-| **Vercel Hobby + GitHub Actions** | Free | Hourly | Automatic | Development, Demos |
-| **Vercel Pro** | $20/month | Up to 1 minute | Config change | Production |
-| **External Cron** | $5-10/month | Configurable | Additional service | Custom needs |
+```bash
+pytest --cov=src
+```
 
-## 🎬 Demo & Showcase Features
+-----
 
-### For Live Demos
-- **Real-time dashboard** with 30-second refresh
-- **Manual trigger** via GitHub Actions
-- **Instant validation** with `?force=true` parameter
-- **Live metrics** updating during presentation
+## Customization
 
-### For Portfolio/Interviews
-- **Professional documentation** with architecture diagrams
-- **Comprehensive testing** (100% test coverage)
-- **Production-ready code** with error handling
-- **Scalable design** demonstrating best practices
+### Adapting for a Different API
 
-### For Stakeholders
-- **Business metrics** (uptime, quality scores)
-- **Cost-effective solution** (free tier compatible)
-- **Reliable alerting** for operational awareness
-- **Historical trends** for decision making
+1.  Update the `TARGET_API_URL` environment variable.
+2.  Modify the `ingest_data()` function in `src/validator.py` to correctly parse the new API response.
+3.  Adjust the Great Expectations suite in `src/great_expectations/expectations/ohlcv_suite.json` to match the new data schema and quality requirements.
 
-## 🛠️ Customization
+### Modifying Monitoring Frequency
 
-### Adapt for Different APIs
-
-1. Update `TARGET_API_URL` environment variable
-2. Modify `ingest_data()` in `src/validator.py`
-3. Adjust Great Expectations validations
-4. Update Grafana dashboard queries
-
-### Modify Monitoring Frequency
+You can change the cron schedule in `.github/workflows/data-quality-monitor.yml`:
 
 ```yaml
 # Every 15 minutes (for demos)
@@ -174,62 +169,6 @@ pytest tests/test_validator.py
 # Every 30 minutes
 - cron: '0,30 * * * *'
 
-# Business hours only
+# Business hours only (9-5, Mon-Fri)
 - cron: '0 9-17 * * 1-5'
 ```
-
-### Add Custom Validations
-
-```python
-# In src/validator.py
-def validate_data(df):
-    gx_df = gx.from_pandas(df)
-    
-    # Add custom expectations
-    gx_df.expect_column_values_to_be_between(
-        column="volume", min_value=1000, max_value=None
-    )
-    gx_df.expect_column_values_to_match_regex(
-        column="symbol", regex="^[A-Z]+$"
-    )
-```
-
-## 📚 Documentation
-
-- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Step-by-step setup
-- **[GitHub Actions Setup](GITHUB_ACTIONS_SETUP.md)** - Monitoring configuration
-- **[Grafana Setup Guide](docs/GRAFANA_SETUP_GUIDE.md)** - Dashboard configuration
-- **[API Documentation](docs/API.md)** - Endpoint specifications
-
-## 🏆 Showcase Highlights
-
-- **Zero-cost operation** on free tiers
-- **Production-ready** with proper error handling
-- **Comprehensive monitoring** with professional dashboard
-- **Scalable architecture** ready for enterprise use
-- **Best practices** in testing, documentation, and deployment
-
-## 📊 Sample Metrics
-
-After running for 24 hours, you'll see:
-- **Quality Score**: 95-98% (typical for stable APIs)
-- **Uptime**: 99%+ (with proper error handling)
-- **Response Time**: <2s (serverless efficiency)
-- **Validation Checks**: 8 per run (comprehensive coverage)
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-**Perfect for showcasing data engineering skills, DevOps practices, and system design capabilities!** 🚀
-
