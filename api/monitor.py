@@ -12,7 +12,11 @@ from src.alert import send_alert
 
 load_dotenv()
 
+# --- Configuration ---
+# The base URL for the API endpoint.
 TARGET_API_URL = os.environ["TARGET_API_URL"]
+# Your personal API key for Alpha Vantage.
+ALPHA_VANTAGE_API_KEY = os.environ["ALPHA_VANTAGE_API_KEY"]
 MONGODB_URI = os.environ["MONGODB_URI"]
 MONGODB_DB = os.environ["MONGODB_DB"]
 MONGODB_COLLECTION = os.environ["MONGODB_COLLECTION"]
@@ -27,13 +31,13 @@ def handler(request, response):
         query = request.url.split("?")[1] if "?" in request.url else ""
         force = "force=true" in query.lower()
 
+        # --- FIXED: Build the full URL with the API key ---
+        # This ensures the API key is correctly included in the request.
+        full_api_url = f"{TARGET_API_URL}&apikey={ALPHA_VANTAGE_API_KEY}"
+
         session = requests.Session()
         retry = Retry(
             total=3,
-            # --- FIXED ---
-            # Increased backoff_factor from 1 to 5 seconds.
-            # This creates a longer delay (5s, 10s, 20s) between retries
-            # to avoid overwhelming the API's rate limit.
             backoff_factor=5,
             status_forcelist=[429, 500, 502, 503, 504]
         )
@@ -41,9 +45,8 @@ def handler(request, response):
         session.mount("http://", adapter)
         session.mount("https://", adapter)
 
-        print(f"Fetching data from: {TARGET_API_URL}")
-        # Increased timeout to accommodate longer retry delays
-        api_response = session.get(TARGET_API_URL, timeout=30)
+        print(f"Fetching data from: {full_api_url}")
+        api_response = session.get(full_api_url, timeout=30)
 
         if api_response.status_code != 200:
             print(f"API request failed with status code: {api_response.status_code}")
@@ -51,6 +54,12 @@ def handler(request, response):
             raise Exception(f"API request failed: {api_response.status_code}")
 
         raw_data = api_response.content
+        
+        # Add a check to handle potential error messages from the API
+        if b"Information" in raw_data or b"Error Message" in raw_data:
+            print(f"API returned an error message: {raw_data.decode()}")
+            raise Exception("API returned an error message.")
+
         content_hash = hashlib.sha256(raw_data).hexdigest()
 
         if not force and not detect_change(content_hash):
