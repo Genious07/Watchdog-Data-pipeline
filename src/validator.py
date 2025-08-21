@@ -5,23 +5,35 @@ from src.db import get_last_hash
 
 
 def ingest_data(raw_data):
+    """
+    Parses the JSON response from the Alpha Vantage API into a pandas DataFrame.
+    """
     data = json.loads(raw_data)
-    # The new API provides a list of lists with format: [timestamp, open, high, low, close]
-    # We will adapt this to the expected DataFrame structure.
-    df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close"])
 
-    # Convert timestamp and data types as before
-    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-    df[["open", "high", "low", "close"]] = df[
-        ["open", "high", "low", "close"]
+    # The data is nested under a key like "Time Series Crypto (60min)".
+    # This dynamically finds that key to make the code more robust.
+    time_series_key = next(iter(data.keys()))
+    df = pd.DataFrame.from_dict(data[time_series_key], orient='index')
+
+    # Rename the columns to match the schema your application expects.
+    df.rename(columns={
+        '1. open': 'open',
+        '2. high': 'high',
+        '3. low': 'low',
+        '4. close': 'close',
+        '5. volume': 'volume'
+    }, inplace=True)
+
+    # The timestamp is the index, so convert it to a proper datetime column.
+    df['timestamp'] = pd.to_datetime(df.index)
+    df.reset_index(drop=True, inplace=True)
+
+    # Ensure all numeric columns have the correct float data type.
+    df[["open", "high", "low", "close", "volume"]] = df[
+        ["open", "high", "low", "close", "volume"]
     ].astype(float)
 
-    # Add a placeholder 'volume' column since it's required for validation,
-    # but not provided by this specific CoinGecko endpoint.
-    df["volume"] = 0.0
-
     return df
-
 
 def detect_change(content_hash):
     last_hash = get_last_hash()
