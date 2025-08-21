@@ -1,3 +1,5 @@
+# genious07/watchdog-data-pipeline/Watchdog-Data-pipeline-6a3f90f1a6f2dac40f674aaf3cc90e4f2c145893/src/db.py
+
 import os
 from datetime import datetime
 from pymongo import MongoClient
@@ -21,7 +23,9 @@ if MONGODB_URI:
 
 
 def store_results(summary, full_results):
-    if not collection:
+    # --- FIXED ---
+    # Changed 'if not collection:' to 'if collection is None:'
+    if collection is None:
         print("MongoDB not configured; skipping store_results.")
         return
     doc = {
@@ -33,7 +37,9 @@ def store_results(summary, full_results):
 
 
 def get_last_hash():
-    if not collection:
+    # --- FIXED ---
+    # Changed 'if not collection:' to 'if collection is None:'
+    if collection is None:
         return None
     last_doc = collection.find_one(sort=[("timestamp", -1)])
     return (
