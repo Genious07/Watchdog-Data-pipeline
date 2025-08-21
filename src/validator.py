@@ -6,26 +6,19 @@ from src.db import get_last_hash
 
 def ingest_data(raw_data):
     """
-    Parses the JSON response from the Alpha Vantage DIGITAL_CURRENCY_DAILY API.
+    Parses the JSON response from the CryptoCompare API into a pandas DataFrame.
     """
     data = json.loads(raw_data)
 
-    # The data is nested under a key like "Time Series (Digital Currency Daily)".
-    time_series_key = "Time Series (Digital Currency Daily)"
-    df = pd.DataFrame.from_dict(data[time_series_key], orient='index')
+    # The data is nested under ['Data']['Data']
+    ohlcv_data = data['Data']['Data']
+    df = pd.DataFrame(ohlcv_data)
 
-    # Rename the columns to match the application's schema. Note the new naming convention.
-    df.rename(columns={
-        '1a. open (USD)': 'open',
-        '2a. high (USD)': 'high',
-        '3a. low (USD)': 'low',
-        '4a. close (USD)': 'close',
-        '5. volume': 'volume'
-    }, inplace=True)
+    # The 'time' column is a Unix timestamp, so we convert it to datetime.
+    df['timestamp'] = pd.to_datetime(df['time'], unit='s')
 
-    # The timestamp is the index, so convert it to a proper datetime column.
-    df['timestamp'] = pd.to_datetime(df.index)
-    df.reset_index(drop=True, inplace=True)
+    # The 'volumefrom' column corresponds to the base asset volume.
+    df.rename(columns={'volumefrom': 'volume'}, inplace=True)
 
     # Ensure all numeric columns have the correct float data type.
     df[["open", "high", "low", "close", "volume"]] = df[
