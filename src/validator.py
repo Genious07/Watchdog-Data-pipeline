@@ -6,21 +6,20 @@ from src.db import get_last_hash
 
 def ingest_data(raw_data):
     """
-    Parses the JSON response from the Alpha Vantage API into a pandas DataFrame.
+    Parses the JSON response from the Alpha Vantage DIGITAL_CURRENCY_DAILY API.
     """
     data = json.loads(raw_data)
 
-    # The data is nested under a key like "Time Series Crypto (60min)".
-    # This dynamically finds that key to make the code more robust.
-    time_series_key = next(iter(data.keys()))
+    # The data is nested under a key like "Time Series (Digital Currency Daily)".
+    time_series_key = "Time Series (Digital Currency Daily)"
     df = pd.DataFrame.from_dict(data[time_series_key], orient='index')
 
-    # Rename the columns to match the schema your application expects.
+    # Rename the columns to match the application's schema. Note the new naming convention.
     df.rename(columns={
-        '1. open': 'open',
-        '2. high': 'high',
-        '3. low': 'low',
-        '4. close': 'close',
+        '1a. open (USD)': 'open',
+        '2a. high (USD)': 'high',
+        '3a. low (USD)': 'low',
+        '4a. close (USD)': 'close',
         '5. volume': 'volume'
     }, inplace=True)
 
