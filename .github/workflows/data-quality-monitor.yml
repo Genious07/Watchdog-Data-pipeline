@@ -1,0 +1,104 @@
+name: Data Quality Monitor
+
+on:
+  schedule:
+    # Run every hour at minute 0 for regular monitoring
+    - cron: '0 * * * *'
+    # Run every 15 minutes during business hours for demo/showcase
+    # Uncomment the line below for more frequent monitoring during demos
+    # - cron: '*/15 * * * *'
+  workflow_dispatch:
+    # Allow manual triggering for demos
+    inputs:
+      force_check:
+        description: 'Force validation check'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Set up monitoring context
+      run: |
+        echo "🚀 Starting Data Quality Monitor"
+        echo "Timestamp: $(date -u)"
+        echo "Trigger: ${{ github.event_name }}"
+        
+    - name: Trigger Data Quality Check
+      id: quality_check
+      run: |
+        echo "📊 Triggering data quality validation..."
+        
+        # Build URL with force parameter
+        URL="${{ secrets.VERCEL_ENDPOINT }}/api/monitor"
+        if [[ "${{ github.event.inputs.force_check }}" == "true" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          URL="${URL}?force=true"
+        fi
+        
+        echo "🔗 Endpoint: $URL"
+        
+        # Make request with detailed output
+        RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code};TIME:%{time_total}" "$URL")
+        HTTP_STATUS=$(echo $RESPONSE | grep -o "HTTPSTATUS:[0-9]*" | cut -d: -f2)
+        TIME_TOTAL=$(echo $RESPONSE | grep -o "TIME:[0-9.]*" | cut -d: -f2)
+        BODY=$(echo $RESPONSE | sed -E 's/HTTPSTATUS:[0-9]*;TIME:[0-9.]*$//')
+        
+        echo "📈 Response Status: $HTTP_STATUS"
+        echo "⏱️  Response Time: ${TIME_TOTAL}s"
+        echo "📄 Response Body: $BODY"
+        
+        # Check if request was successful
+        if [[ $HTTP_STATUS -ge 200 && $HTTP_STATUS -lt 300 ]]; then
+          echo "✅ Data quality check completed successfully"
+          
+          # Extract quality metrics if available
+          if echo "$BODY" | jq -e '.summary.percent_valid' > /dev/null 2>&1; then
+            QUALITY_SCORE=$(echo "$BODY" | jq -r '.summary.percent_valid')
+            SUCCESS=$(echo "$BODY" | jq -r '.summary.success')
+            echo "🎯 Quality Score: ${QUALITY_SCORE}%"
+            echo "🔍 Validation Success: $SUCCESS"
+            
+            # Set outputs for potential use in notifications
+            echo "quality_score=$QUALITY_SCORE" >> $GITHUB_OUTPUT
+            echo "validation_success=$SUCCESS" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "❌ Data quality check failed with status $HTTP_STATUS"
+          exit 1
+        fi
+    
+    - name: Log Success Metrics
+      if: success()
+      run: |
+        echo "🎉 Monitoring cycle completed successfully"
+        echo "📊 Quality Score: ${{ steps.quality_check.outputs.quality_score }}%"
+        echo "✅ Validation: ${{ steps.quality_check.outputs.validation_success }}"
+        echo "🕐 Next scheduled run: $(date -d '+1 hour' -u)"
+    
+    - name: Handle Failure
+      if: failure()
+      run: |
+        echo "💥 Data quality monitoring failed at $(date -u)"
+        echo "🔧 Check the following:"
+        echo "   - Vercel endpoint is accessible"
+        echo "   - MongoDB connection is working"
+        echo "   - Binance API is responding"
+        echo "   - Environment variables are set correctly"
+        
+        # Could add additional notification logic here
+        # For example: Slack webhook, Discord webhook, etc.
+        
+    - name: Showcase Metrics Summary
+      if: always()
+      run: |
+        echo "📋 Monitoring Summary for Showcase:"
+        echo "   Workflow: ${{ github.workflow }}"
+        echo "   Run ID: ${{ github.run_id }}"
+        echo "   Trigger: ${{ github.event_name }}"
+        echo "   Status: ${{ job.status }}"
+        echo "   Repository: ${{ github.repository }}"
+        echo "   Branch: ${{ github.ref_name }}"
+
