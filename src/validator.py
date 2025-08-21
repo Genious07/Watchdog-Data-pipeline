@@ -6,25 +6,20 @@ from src.db import get_last_hash
 
 def ingest_data(raw_data):
     data = json.loads(raw_data)
-    columns = [
-        "timestamp",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "close_time",
-        "quote_asset_volume",
-        "number_of_trades",
-        "taker_buy_base_asset_volume",
-        "taker_buy_quote_asset_volume",
-        "ignore",
-    ]
-    df = pd.DataFrame(data, columns=columns)
+    # The new API provides a list of lists with format: [timestamp, open, high, low, close]
+    # We will adapt this to the expected DataFrame structure.
+    df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close"])
+
+    # Convert timestamp and data types as before
     df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-    df[["open", "high", "low", "close", "volume"]] = df[
-        ["open", "high", "low", "close", "volume"]
+    df[["open", "high", "low", "close"]] = df[
+        ["open", "high", "low", "close"]
     ].astype(float)
+
+    # Add a placeholder 'volume' column since it's required for validation,
+    # but not provided by this specific CoinGecko endpoint.
+    df["volume"] = 0.0
+
     return df
 
 
