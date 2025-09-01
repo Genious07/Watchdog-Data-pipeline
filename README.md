@@ -8,7 +8,7 @@ The pipeline fetches OHLCV (Open, High, Low, Close, Volume) data for BTC/USDT, v
 
 A live snapshot of the monitoring dashboard can be viewed here:
 
-**[View Live Grafana Dashboard](https://satwik07.grafana.net/dashboard/snapshot/4doPsh8wNqw4jQnjOJRYr1TzXLPmETUw)**
+**[View Live Grafana Dashboard](https://satwik07.grafana.net/dashboard/snapshot/vYpeQtkBQEkNM7LugUHizjSEGPXIuZDT)**
 
 -----
 
